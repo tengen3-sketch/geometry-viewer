@@ -1,0 +1,883 @@
+﻿<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2f6bbf">
+<title>ジオメトリ比較ビューア</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+</head>
+<body>
+<style>
+  :root {
+    --bg: #f4f5f2;
+    --panel: #ffffff;
+    --ink: #232830;
+    --muted: #707a86;
+    --line: #e0e4dd;
+    --hairline: #ecefe9;
+    --canvas-bg: #fbfcfa;
+    --grid: #e7eae3;
+    --ground: #c9cec5;
+    --a: #2f6bbf;
+    --a-soft: rgba(47, 107, 191, 0.14);
+    --b: #d9711c;
+    --b-soft: rgba(217, 113, 28, 0.14);
+    --c: #1c8c74;
+    --c-soft: rgba(28, 140, 116, 0.14);
+    --focus: #2f6bbf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171c;
+      --panel: #1c2027;
+      --ink: #e4e7ea;
+      --muted: #8b95a1;
+      --line: #2b313a;
+      --hairline: #232932;
+      --canvas-bg: #181c22;
+      --grid: #232932;
+      --ground: #3a424d;
+      --a: #6c9fe8;
+      --a-soft: rgba(108, 159, 232, 0.16);
+      --b: #eb9243;
+      --b-soft: rgba(235, 146, 67, 0.16);
+      --focus: #6c9fe8;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171c;
+    --panel: #1c2027;
+    --ink: #e4e7ea;
+    --muted: #8b95a1;
+    --line: #2b313a;
+    --hairline: #232932;
+    --canvas-bg: #181c22;
+    --grid: #232932;
+    --ground: #3a424d;
+    --a: #6c9fe8;
+    --a-soft: rgba(108, 159, 232, 0.16);
+    --b: #eb9243;
+    --b-soft: rgba(235, 146, 67, 0.16);
+    --c: #45b89e;
+    --c-soft: rgba(69, 184, 158, 0.16);
+    --focus: #6c9fe8;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f5f2;
+    --panel: #ffffff;
+    --ink: #232830;
+    --muted: #707a86;
+    --line: #e0e4dd;
+    --hairline: #ecefe9;
+    --canvas-bg: #fbfcfa;
+    --grid: #e7eae3;
+    --ground: #c9cec5;
+    --a: #2f6bbf;
+    --a-soft: rgba(47, 107, 191, 0.14);
+    --b: #d9711c;
+    --b-soft: rgba(217, 113, 28, 0.14);
+    --c: #1c8c74;
+    --c-soft: rgba(28, 140, 116, 0.14);
+    --focus: #2f6bbf;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    padding: 20px;
+  }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+
+  header { margin-bottom: 18px; }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 2px;
+  }
+  h1 { font-size: 20px; font-weight: 650; margin: 0; letter-spacing: 0.01em; }
+
+  .app {
+    display: grid;
+    grid-template-columns: 440px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    max-width: 1360px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .canvas-col { order: -1; }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .card + .card { margin-top: 14px; }
+
+  .bike-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .bike-head .name { font-weight: 650; font-size: 14px; }
+  .bike-head label.vis {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  select, input[type="number"] {
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 4px 8px;
+    width: 100%;
+  }
+  select:focus-visible, input:focus-visible, input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+  input[type="number"] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .preset-row { margin-bottom: 10px; }
+
+  .fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+  }
+  .field { display: flex; flex-direction: column; gap: 2px; }
+  .field label {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .field .unit-wrap { position: relative; }
+  .field .unit {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .field input { padding-right: 34px; }
+  .field.optional label::after { content: "（任意）"; }
+
+  .canvas-col .card { padding: 12px; }
+  .canvas-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    align-items: center;
+    padding: 2px 4px 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .canvas-toolbar label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .canvas-toolbar select { width: auto; padding: 3px 6px; font-size: 12px; }
+  #canvasWrap {
+    background: var(--canvas-bg);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  #svg { display: block; width: 100%; height: auto; }
+  .canvas-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin: 8px 4px 0;
+  }
+
+  table.diff {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  table.diff th, table.diff td {
+    padding: 5px 6px;
+    text-align: right;
+    border-bottom: 1px solid var(--hairline);
+    font-variant-numeric: tabular-nums;
+  }
+  table.diff th { font-weight: 600; }
+  table.diff th:first-child, table.diff td:first-child {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  table.diff thead th { font-size: 11px; letter-spacing: 0.04em; border-bottom: 1px solid var(--line); }
+  table.diff thead th.colA { color: var(--a); }
+  table.diff thead th.colB { color: var(--b); }
+  table.diff thead th.colC { color: var(--c); }
+  table.diff td.delta { font-weight: 650; }
+  table.diff td.delta.pos { color: var(--b); }
+  table.diff td.delta.neg { color: var(--a); }
+  table.diff tr.derived td:first-child::after {
+    content: " *";
+    color: var(--muted);
+  }
+  .diff-note { font-size: 11px; color: var(--muted); margin: 8px 0 0; }
+
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+</style>
+
+<header>
+  <p class="eyebrow">Frame Geometry Viewer</p>
+  <h1>ロードバイク ジオメトリ比較</h1>
+</header>
+
+<div class="app">
+  <div class="input-col">
+    <div class="card" id="cardA"></div>
+    <div class="card" id="cardB"></div>
+    <div class="card" id="cardC"></div>
+    <div class="card">
+      <p class="section-title">比較表（A 基準）</p>
+      <div style="overflow-x:auto">
+        <table class="diff">
+          <thead>
+            <tr><th>項目</th><th class="colA">A</th><th class="colB">B</th><th class="colC">C</th><th>B−A</th><th>C−A</th></tr>
+          </thead>
+          <tbody id="diffBody"></tbody>
+        </table>
+      </div>
+      <p class="diff-note">* は入力値から算出した参考値。差分列は A を基準（B−A / C−A）。</p>
+    </div>
+  </div>
+
+  <div class="canvas-col">
+    <div class="card">
+      <div class="canvas-toolbar">
+        <label>基準位置合わせ
+          <select id="alignSel">
+            <option value="bb">BB（ボトムブラケット）</option>
+            <option value="httop">ヘッドチューブ上端</option>
+            <option value="raxle">後輪軸</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="guideChk" checked> スタック/リーチ補助線</label>
+        <label><input type="checkbox" id="wheelChk" checked> ホイール表示</label>
+      </div>
+      <div id="canvasWrap">
+        <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="フレームジオメトリの重ね描き比較図"></svg>
+      </div>
+      <p class="canvas-note">単位はすべて mm・度。BB を原点に実寸比で描画（ホイールは 700c × 28mm 相当、半径 336mm と仮定）。サドル高は BB 中心〜サドル上面（シートチューブ延長線上）、サドル本体厚は 40mm 仮定。ハンドル芯はヘッドチューブ上端からステアリング軸に沿って「スペーサー高 + ステムスタック（未入力時 30mm）」上がった点からステム長・ステム角で算出。スペーサー高にはヘッドセット上部カバーの高さも含めて入力してください。ブラケット（レバー取付位置）はハンドル芯からハンドルリーチ分前方・同じ高さと仮定。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var WHEEL_R = 336; // 700c + 28mm tire, approx
+
+  var FIELDS = [
+    { k: "reach",     label: "リーチ",                unit: "mm", req: true,  step: 1 },
+    { k: "stack",     label: "スタック",              unit: "mm", req: true,  step: 1 },
+    { k: "headAngle", label: "ヘッド角",              unit: "°",  req: true,  step: 0.1 },
+    { k: "seatAngle", label: "シート角",              unit: "°",  req: true,  step: 0.1 },
+    { k: "headTube",  label: "ヘッドチューブ長",      unit: "mm", req: true,  step: 1 },
+    { k: "seatTube",  label: "シートチューブ長 C-T",  unit: "mm", req: true,  step: 1 },
+    { k: "chainstay", label: "チェーンステー長",      unit: "mm", req: true,  step: 1 },
+    { k: "bbDrop",    label: "BBドロップ",            unit: "mm", req: true,  step: 1 },
+    { k: "wheelbase", label: "ホイールベース",        unit: "mm", req: true,  step: 1 },
+    { k: "forkRake",  label: "フォークオフセット",    unit: "mm", req: false, step: 1 },
+    { k: "saddleHeight", label: "サドル高 BB〜サドル上面", unit: "mm", req: false, step: 1 },
+    { k: "spacer",     label: "スペーサー高（キャップ込）", unit: "mm", req: false, step: 1 },
+    { k: "stemLength", label: "ステム長",              unit: "mm", req: false, step: 1 },
+    { k: "stemAngle",  label: "ステム角（未入力: −6）", unit: "°",  req: false, step: 1 },
+    { k: "stemStack",  label: "ステムスタック（未入力: 30）", unit: "mm", req: false, step: 1 },
+    { k: "barReach",   label: "ハンドルリーチ（未入力: 80）", unit: "mm", req: false, step: 1 },
+    { k: "barDrop",    label: "ハンドルドロップ（未入力: 130）", unit: "mm", req: false, step: 1 }
+  ];
+
+  // rider-specific values: kept when switching frame presets
+  var RIDER_KEYS = ["saddleHeight", "spacer", "stemLength", "stemAngle", "stemStack", "barReach", "barDrop"];
+
+  function makeSizes(keys, rows) {
+    // rows: { fieldKey: [v per size] }
+    var out = {};
+    keys.forEach(function (sz, i) {
+      var g = {};
+      Object.keys(rows).forEach(function (k) {
+        var arr = rows[k];
+        g[k] = Array.isArray(arr) ? arr[i] : arr;
+      });
+      out[sz] = g;
+    });
+    return out;
+  }
+
+  var PRESETS = {
+    concept: {
+      name: "Concept（サンプル1）",
+      sizes: makeSizes(["47", "49", "51", "53", "55", "57", "60"], {
+        seatTube:  [459, 474, 499, 524, 545, 565, 592],
+        headTube:  [84, 92, 107, 122, 145, 163, 190],
+        chainstay: 408,
+        bbDrop:    [78, 78, 78, 78, 76, 76, 76],
+        wheelbase: [966, 971, 973, 974, 985, 995, 1009],
+        headAngle: [70.8, 71.3, 72.2, 72.8, 73, 73.2, 73.2],
+        seatAngle: [74.5, 74, 73.7, 73.5, 73.5, 73.2, 73.2],
+        forkRake:  [48, 48, 48, 43, 43, 43, 43],
+        reach:     [370, 375, 380, 385, 390, 397, 404],
+        stack:     [495, 504, 520, 540, 560, 578, 604]
+      })
+    },
+    sample2: {
+      name: "サンプル2",
+      sizes: makeSizes(["2XS", "XS", "S", "M", "L", "XL", "2XL"], {
+        seatTube:  [441, 471, 501, 531, 561, 591, 621],
+        headTube:  [88, 107, 121, 142, 162, 188, 206],
+        headAngle: [70, 71.2, 72.8, 73.25, 73.3, 73.5, 73.8],
+        seatAngle: 73.5,
+        chainstay: [410, 410, 410, 410, 413, 415, 415],
+        wheelbase: [975, 979, 982, 988, 1003, 1029, 1042],
+        stack:     [498, 520, 539, 560, 580, 606, 624],
+        reach:     [372, 378, 390, 393, 401, 419, 429],
+        bbDrop:    70
+      })
+    }
+  };
+
+  var state = {
+    A: { preset: "concept:55", values: {} },
+    B: { preset: "sample2:M", values: {} },
+    C: { preset: "custom", values: {} },
+    showA: true,
+    showB: true,
+    showC: true,
+    align: "bb",
+    guides: true,
+    wheels: true
+  };
+
+  var COLORS = { A: "var(--a)", B: "var(--b)", C: "var(--c)" };
+
+  // ---------- UI construction ----------
+
+  function buildBikeCard(id) {
+    var card = document.getElementById("card" + id);
+    var color = COLORS[id];
+
+    var head = document.createElement("div");
+    head.className = "bike-head";
+    head.innerHTML =
+      '<span class="swatch" style="background:' + color + '"></span>' +
+      '<span class="name">バイク ' + id + "</span>" +
+      '<label class="vis"><input type="checkbox" id="vis' + id + '" checked> 表示</label>';
+    card.appendChild(head);
+
+    var presetRow = document.createElement("div");
+    presetRow.className = "preset-row";
+    var sel = document.createElement("select");
+    sel.id = "preset" + id;
+    sel.setAttribute("aria-label", "バイク" + id + " のプリセット");
+    var optCustom = document.createElement("option");
+    optCustom.value = "custom";
+    optCustom.textContent = "カスタム入力";
+    sel.appendChild(optCustom);
+    Object.keys(PRESETS).forEach(function (pk) {
+      var og = document.createElement("optgroup");
+      og.label = PRESETS[pk].name;
+      Object.keys(PRESETS[pk].sizes).forEach(function (sz) {
+        var o = document.createElement("option");
+        o.value = pk + ":" + sz;
+        o.textContent = PRESETS[pk].name + "  /  サイズ " + sz;
+        og.appendChild(o);
+      });
+      sel.appendChild(og);
+    });
+    presetRow.appendChild(sel);
+    card.appendChild(presetRow);
+
+    var fields = document.createElement("div");
+    fields.className = "fields";
+    FIELDS.forEach(function (f) {
+      var d = document.createElement("div");
+      d.className = "field" + (f.req ? "" : " optional");
+      var inputId = "f_" + id + "_" + f.k;
+      d.innerHTML =
+        '<label for="' + inputId + '">' + f.label + "</label>" +
+        '<span class="unit-wrap">' +
+        '<input type="number" id="' + inputId + '" step="' + f.step + '" inputmode="decimal">' +
+        '<span class="unit">' + f.unit + "</span></span>";
+      fields.appendChild(d);
+    });
+    card.appendChild(fields);
+
+    sel.addEventListener("change", function () {
+      state[id].preset = sel.value;
+      if (sel.value !== "custom") {
+        var parts = sel.value.split(":");
+        var g = PRESETS[parts[0]].sizes[parts[1]];
+        var keep = {};
+        RIDER_KEYS.forEach(function (k) { keep[k] = state[id].values[k]; });
+        state[id].values = Object.assign({}, g, keep);
+        FIELDS.forEach(function (f) {
+          document.getElementById("f_" + id + "_" + f.k).value =
+            state[id].values[f.k] != null ? state[id].values[f.k] : "";
+        });
+      }
+      render();
+    });
+
+    FIELDS.forEach(function (f) {
+      document.getElementById("f_" + id + "_" + f.k).addEventListener("input", function (e) {
+        var v = e.target.value === "" ? null : Number(e.target.value);
+        state[id].values[f.k] = isNaN(v) ? null : v;
+        state[id].preset = "custom";
+        sel.value = "custom";
+        render();
+      });
+    });
+
+    document.getElementById("vis" + id).addEventListener("change", function (e) {
+      state["show" + id] = e.target.checked;
+      render();
+    });
+  }
+
+  function applyPreset(id) {
+    var p = state[id].preset;
+    document.getElementById("preset" + id).value = p;
+    if (p !== "custom") {
+      var parts = p.split(":");
+      var g = PRESETS[parts[0]].sizes[parts[1]];
+      var keep = {};
+      RIDER_KEYS.forEach(function (k) { keep[k] = state[id].values[k]; });
+      state[id].values = Object.assign({}, g, keep);
+      FIELDS.forEach(function (f) {
+        document.getElementById("f_" + id + "_" + f.k).value =
+          state[id].values[f.k] != null ? state[id].values[f.k] : "";
+      });
+    }
+  }
+
+  // ---------- Geometry ----------
+
+  function rad(deg) { return (deg * Math.PI) / 180; }
+
+  function computeFrame(v) {
+    var need = ["reach", "stack", "headAngle", "seatAngle", "headTube", "seatTube", "chainstay", "bbDrop", "wheelbase"];
+    for (var i = 0; i < need.length; i++) {
+      if (v[need[i]] == null || !isFinite(v[need[i]])) return null;
+    }
+    var ha = rad(v.headAngle), sa = rad(v.seatAngle);
+    var csSq = v.chainstay * v.chainstay - v.bbDrop * v.bbDrop;
+    if (csSq <= 0) return null;
+
+    var rear = { x: -Math.sqrt(csSq), y: v.bbDrop };
+    var front = { x: rear.x + v.wheelbase, y: v.bbDrop };
+    var htTop = { x: v.reach, y: v.stack };
+    var htBot = { x: v.reach + v.headTube * Math.cos(ha), y: v.stack - v.headTube * Math.sin(ha) };
+    var stTop = { x: -v.seatTube * Math.cos(sa), y: v.seatTube * Math.sin(sa) };
+
+    var ett = v.reach + v.stack / Math.tan(sa);
+    var frontCenter = Math.sqrt(front.x * front.x + v.bbDrop * v.bbDrop);
+    var trail = null;
+    if (v.forkRake != null && isFinite(v.forkRake)) {
+      trail = (WHEEL_R * Math.cos(ha) - v.forkRake) / Math.sin(ha);
+    }
+
+    var saddle = null;
+    if (v.saddleHeight != null && isFinite(v.saddleHeight) && v.saddleHeight > 0) {
+      saddle = { x: -v.saddleHeight * Math.cos(sa), y: v.saddleHeight * Math.sin(sa) };
+    }
+
+    // handlebar clamp: up the steering axis by spacers + stem stack, then along
+    // the stem. Stem angle is quoted vs. the steerer's perpendicular, so
+    // effective rise from horizontal = (90 - headAngle) + stemAngle.
+    // Bracket (hood) sits bar-reach forward of the clamp, at clamp height.
+    var bar = null, stemBase = null, spacerTop = null, bracket = null;
+    var barReach = null, barDrop = null;
+    if (v.stemLength != null && isFinite(v.stemLength) && v.stemLength > 0) {
+      var spacer = (v.spacer != null && isFinite(v.spacer)) ? v.spacer : 0;
+      var stemAng = (v.stemAngle != null && isFinite(v.stemAngle)) ? v.stemAngle : -6;
+      var stemStack = (v.stemStack != null && isFinite(v.stemStack)) ? v.stemStack : 30;
+      var up = { x: -Math.cos(ha), y: Math.sin(ha) };
+      spacerTop = { x: htTop.x + up.x * spacer, y: htTop.y + up.y * spacer };
+      stemBase = {
+        x: htTop.x + up.x * (spacer + stemStack),
+        y: htTop.y + up.y * (spacer + stemStack)
+      };
+      var phi = rad(90 - v.headAngle + stemAng);
+      bar = {
+        x: stemBase.x + v.stemLength * Math.cos(phi),
+        y: stemBase.y + v.stemLength * Math.sin(phi)
+      };
+      barReach = (v.barReach != null && isFinite(v.barReach)) ? v.barReach : 80;
+      barDrop = (v.barDrop != null && isFinite(v.barDrop)) ? v.barDrop : 130;
+      bracket = { x: bar.x + barReach, y: bar.y };
+    }
+
+    return {
+      v: v, rear: rear, front: front, htTop: htTop, htBot: htBot, stTop: stTop,
+      saddle: saddle, spacerTop: spacerTop, stemBase: stemBase, bar: bar,
+      bracket: bracket, barReach: barReach, barDrop: barDrop,
+      bb: { x: 0, y: 0 },
+      derived: {
+        ett: ett, frontCenter: frontCenter, str: v.stack / v.reach, trail: trail,
+        saddleSetback: saddle ? -saddle.x : null,
+        barX: bar ? bar.x : null,
+        barY: bar ? bar.y : null,
+        saddleBarDrop: (saddle && bar) ? saddle.y - bar.y : null,
+        saddleBarReach: (saddle && bar) ? bar.x - saddle.x : null,
+        saddleBracketReach: (saddle && bracket) ? bracket.x - saddle.x : null
+      }
+    };
+  }
+
+  // ---------- SVG rendering ----------
+
+  var NS = "http://www.w3.org/2000/svg";
+
+  function pt(p, off) { return (p.x + off.x) + "," + (-(p.y + off.y)); }
+
+  function el(name, attrs) {
+    var e = document.createElementNS(NS, name);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    return e;
+  }
+
+  function drawBike(svg, f, off, color, opts) {
+    var g = el("g", { fill: "none", stroke: color, "stroke-linecap": "round", "stroke-linejoin": "round" });
+
+    if (opts.wheels) {
+      [f.rear, f.front].forEach(function (axle) {
+        g.appendChild(el("circle", {
+          cx: axle.x + off.x, cy: -(axle.y + off.y), r: WHEEL_R,
+          "stroke-width": 24, opacity: 0.16
+        }));
+        g.appendChild(el("circle", {
+          cx: axle.x + off.x, cy: -(axle.y + off.y), r: 6,
+          fill: color, stroke: "none", opacity: 0.8
+        }));
+      });
+    }
+
+    // fork: quadratic curve from head tube bottom to front axle, bending along steering axis
+    var ha = rad(f.v.headAngle);
+    var dx = f.front.x - f.htBot.x, dy = f.front.y - f.htBot.y;
+    var L = Math.sqrt(dx * dx + dy * dy);
+    var ctrl = { x: f.htBot.x + Math.cos(ha) * L * 0.72, y: f.htBot.y - Math.sin(ha) * L * 0.72 };
+    g.appendChild(el("path", {
+      d: "M" + pt(f.htBot, off) + " Q" + pt(ctrl, off) + " " + pt(f.front, off),
+      "stroke-width": 13, opacity: 0.95
+    }));
+
+    // stays
+    g.appendChild(el("path", {
+      d: "M" + pt(f.bb, off) + " L" + pt(f.rear, off) + " L" + pt(f.stTop, off),
+      "stroke-width": 9, opacity: 0.95
+    }));
+
+    // main triangle
+    g.appendChild(el("path", {
+      d: "M" + pt(f.bb, off) + " L" + pt(f.htBot, off) +
+         " M" + pt(f.bb, off) + " L" + pt(f.stTop, off) +
+         " L" + pt(f.htTop, off),
+      "stroke-width": 15, opacity: 0.95
+    }));
+
+    // seatpost + saddle
+    if (f.saddle) {
+      var sa = rad(f.v.seatAngle);
+      var railGap = 40; // saddle body height: rails/post clamp sit ~40mm below saddle top
+      var postTop = {
+        x: f.saddle.x + railGap * Math.cos(sa),
+        y: f.saddle.y - railGap * Math.sin(sa)
+      };
+      g.appendChild(el("line", {
+        x1: f.stTop.x + off.x, y1: -(f.stTop.y + off.y),
+        x2: postTop.x + off.x, y2: -(postTop.y + off.y),
+        "stroke-width": 9, opacity: 0.9
+      }));
+      var sy = -(f.saddle.y + off.y) + 8; // stroke center sits half a width below saddle top
+      g.appendChild(el("path", {
+        d: "M" + (f.saddle.x + off.x - 145) + "," + sy +
+           " Q" + (f.saddle.x + off.x - 30) + "," + (sy - 10) +
+           " " + (f.saddle.x + off.x + 120) + "," + sy,
+        "stroke-width": 16, opacity: 0.9
+      }));
+    }
+
+    // spacers + stem + handlebar
+    if (f.bar) {
+      g.appendChild(el("line", {
+        x1: f.htTop.x + off.x, y1: -(f.htTop.y + off.y),
+        x2: f.stemBase.x + off.x, y2: -(f.stemBase.y + off.y),
+        "stroke-width": 15, opacity: 0.75
+      }));
+      g.appendChild(el("line", {
+        x1: f.stemBase.x + off.x, y1: -(f.stemBase.y + off.y),
+        x2: f.bar.x + off.x, y2: -(f.bar.y + off.y),
+        "stroke-width": 13, opacity: 0.95
+      }));
+      // drop bar silhouette sized by bar reach / drop
+      var bR = f.barReach, bD = f.barDrop;
+      var bp = function (dx, dy) {
+        return (f.bar.x + dx + off.x) + "," + (-(f.bar.y + dy + off.y));
+      };
+      g.appendChild(el("path", {
+        d: "M" + bp(0, 0) +
+           " C" + bp(bR + 8, 0) + " " + bp(bR + 26, -(bD - 45)) + " " + bp(bR * 0.35, -bD),
+        "stroke-width": 11, opacity: 0.9
+      }));
+      // brake lever / hood at the bracket position
+      g.appendChild(el("line", {
+        x1: f.bracket.x + off.x, y1: -(f.bracket.y + off.y),
+        x2: f.bracket.x + 40 + off.x, y2: -(f.bracket.y - 24 + off.y),
+        "stroke-width": 10, opacity: 0.9
+      }));
+      g.appendChild(el("circle", {
+        cx: f.bracket.x + off.x, cy: -(f.bracket.y + off.y), r: 6.5,
+        fill: color, stroke: "none"
+      }));
+      g.appendChild(el("circle", {
+        cx: f.bar.x + off.x, cy: -(f.bar.y + off.y), r: 5,
+        fill: color, stroke: "none"
+      }));
+    }
+
+    // head tube (thicker, on top)
+    g.appendChild(el("line", {
+      x1: f.htTop.x + off.x, y1: -(f.htTop.y + off.y),
+      x2: f.htBot.x + off.x, y2: -(f.htBot.y + off.y),
+      "stroke-width": 19
+    }));
+
+    // BB marker
+    g.appendChild(el("circle", { cx: off.x, cy: -off.y, r: 7, fill: color, stroke: "none" }));
+
+    if (opts.guides) {
+      var gd = el("g", { "stroke-width": 2.5, opacity: 0.55, "stroke-dasharray": "8 7" });
+      gd.appendChild(el("path", {
+        d: "M" + pt(f.bb, off) +
+           " L" + (off.x) + "," + (-(f.htTop.y + off.y)) +
+           " L" + pt(f.htTop, off)
+      }));
+      g.appendChild(gd);
+    }
+
+    svg.appendChild(g);
+  }
+
+  function render() {
+    var svg = document.getElementById("svg");
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    var frames = {
+      A: computeFrame(state.A.values),
+      B: computeFrame(state.B.values),
+      C: computeFrame(state.C.values)
+    };
+    var ids = ["A", "B", "C"];
+    var ref = frames.A || frames.B || frames.C;
+
+    var items = [];
+    ids.forEach(function (id) {
+      var f = frames[id];
+      if (!f || !state["show" + id]) return;
+      var off = { x: 0, y: 0 };
+      if (ref && state.align === "httop") {
+        off = { x: ref.htTop.x - f.htTop.x, y: ref.htTop.y - f.htTop.y };
+      } else if (ref && state.align === "raxle") {
+        off = { x: ref.rear.x - f.rear.x, y: ref.rear.y - f.rear.y };
+      }
+      items.push({ f: f, off: off, color: COLORS[id] });
+    });
+
+    // bounding box in math coords (y up)
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    items.forEach(function (it) {
+      var f = it.f, o = it.off;
+      var wr = state.wheels ? WHEEL_R + 14 : 60;
+      minX = Math.min(minX, f.rear.x + o.x - wr);
+      maxX = Math.max(maxX, f.front.x + o.x + wr);
+      minY = Math.min(minY, f.rear.y + o.y - wr, 0);
+      maxY = Math.max(maxY, f.htTop.y + o.y + 30, f.stTop.y + o.y + 30, f.rear.y + o.y + wr);
+      if (f.saddle) maxY = Math.max(maxY, f.saddle.y + o.y + 30);
+      if (f.bar) {
+        maxY = Math.max(maxY, f.bar.y + o.y + 40, f.stemBase.y + o.y + 40);
+        maxX = Math.max(maxX, f.bar.x + o.x + f.barReach + 75);
+      }
+    });
+
+    if (!items.length) {
+      minX = -600; maxX = 700; minY = -380; maxY = 640;
+    }
+
+    var pad = 45;
+    var vbX = minX - pad, vbW = (maxX - minX) + pad * 2;
+    var vbY = -(maxY + pad), vbH = (maxY - minY) + pad * 2;
+    svg.setAttribute("viewBox", vbX + " " + vbY + " " + vbW + " " + vbH);
+
+    // ground line at lowest wheel contact of visible bikes
+    if (items.length && state.wheels) {
+      var groundY = Infinity;
+      items.forEach(function (it) {
+        groundY = Math.min(groundY, it.f.rear.y + it.off.y - WHEEL_R);
+      });
+      svg.appendChild(el("line", {
+        x1: vbX, x2: vbX + vbW, y1: -groundY, y2: -groundY,
+        stroke: "var(--ground)", "stroke-width": 2
+      }));
+    }
+
+    items.forEach(function (it) {
+      drawBike(svg, it.f, it.off, it.color, { wheels: state.wheels, guides: state.guides });
+    });
+
+    if (!items.length) {
+      var t = el("text", {
+        x: (vbX + vbW / 2), y: (vbY + vbH / 2),
+        "text-anchor": "middle", fill: "var(--muted)",
+        "font-size": 34, "font-family": "inherit"
+      });
+      t.textContent = "必須項目（任意以外）をすべて入力すると描画されます";
+      svg.appendChild(t);
+    }
+
+    renderDiff(frames.A, frames.B, frames.C);
+  }
+
+  // ---------- Diff table ----------
+
+  function fmt(v, dec) {
+    if (v == null || !isFinite(v)) return "–";
+    return v.toFixed(dec);
+  }
+
+  function renderDiff(fA, fB, fC) {
+    var frames = [fA, fB, fC];
+    var ROWS = [
+      { label: "リーチ (mm)",             k: "reach",        src: "v", dec: 0 },
+      { label: "スタック (mm)",           k: "stack",        src: "v", dec: 0 },
+      { label: "スタック / リーチ比",     k: "str",          src: "d", dec: 2 },
+      { label: "ヘッド角 (°)",            k: "headAngle",    src: "v", dec: 1 },
+      { label: "シート角 (°)",            k: "seatAngle",    src: "v", dec: 1 },
+      { label: "ヘッドチューブ長 (mm)",   k: "headTube",     src: "v", dec: 0 },
+      { label: "シートチューブ長 (mm)",   k: "seatTube",     src: "v", dec: 0 },
+      { label: "実効トップチューブ長 (mm)", k: "ett",        src: "d", dec: 0 },
+      { label: "チェーンステー長 (mm)",   k: "chainstay",    src: "v", dec: 0 },
+      { label: "BBドロップ (mm)",         k: "bbDrop",       src: "v", dec: 0 },
+      { label: "ホイールベース (mm)",     k: "wheelbase",    src: "v", dec: 0 },
+      { label: "フロントセンター (mm)",   k: "frontCenter",  src: "d", dec: 0 },
+      { label: "トレール (mm)",           k: "trail",        src: "d", dec: 1 },
+      { label: "サドル高 (mm)",           k: "saddleHeight", src: "v", dec: 0 },
+      { label: "サドル上面の後退量 (mm)", k: "saddleSetback", src: "d", dec: 0 },
+      { label: "ハンドル芯 BBから水平 (mm)", k: "barX",      src: "d", dec: 0 },
+      { label: "ハンドル芯 BBから垂直 (mm)", k: "barY",      src: "d", dec: 0 },
+      { label: "サドル→ハンドル落差 (mm)",   k: "saddleBarDrop",  src: "d", dec: 0 },
+      { label: "サドル→ハンドル水平距離 (mm)", k: "saddleBarReach", src: "d", dec: 0 },
+      { label: "ハンドルリーチ (mm)",        k: "barReach", src: "v", dec: 0 },
+      { label: "ハンドルドロップ (mm)",      k: "barDrop",  src: "v", dec: 0 },
+      { label: "サドル→ブラケット水平距離 (mm)", k: "saddleBracketReach", src: "d", dec: 0 }
+    ];
+
+    function get(f, r) {
+      if (!f) return null;
+      var v = r.src === "v" ? f.v[r.k] : f.derived[r.k];
+      return (v != null && isFinite(v)) ? v : null;
+    }
+
+    function deltaCell(base, v, dec) {
+      if (base == null || v == null) return '<td class="num delta">–</td>';
+      var rounded = Number((v - base).toFixed(dec));
+      var cls = "num delta" + (rounded > 0 ? " pos" : rounded < 0 ? " neg" : "");
+      return '<td class="' + cls + '">' + (rounded > 0 ? "+" : "") + rounded.toFixed(dec) + "</td>";
+    }
+
+    var tbody = document.getElementById("diffBody");
+    tbody.innerHTML = "";
+    ROWS.forEach(function (r) {
+      var vals = frames.map(function (f) { return get(f, r); });
+      if (vals[0] == null && vals[1] == null && vals[2] == null) return;
+      var tr = document.createElement("tr");
+      if (r.src === "d") tr.className = "derived";
+      tr.innerHTML =
+        "<td>" + r.label + "</td>" +
+        '<td class="num">' + fmt(vals[0], r.dec) + "</td>" +
+        '<td class="num">' + fmt(vals[1], r.dec) + "</td>" +
+        '<td class="num">' + fmt(vals[2], r.dec) + "</td>" +
+        deltaCell(vals[0], vals[1], r.dec) +
+        deltaCell(vals[0], vals[2], r.dec);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- Toolbar ----------
+
+  document.getElementById("alignSel").addEventListener("change", function (e) {
+    state.align = e.target.value; render();
+  });
+  document.getElementById("guideChk").addEventListener("change", function (e) {
+    state.guides = e.target.checked; render();
+  });
+  document.getElementById("wheelChk").addEventListener("change", function (e) {
+    state.wheels = e.target.checked; render();
+  });
+
+  // ---------- Init ----------
+
+  buildBikeCard("A");
+  buildBikeCard("B");
+  buildBikeCard("C");
+  applyPreset("A");
+  applyPreset("B");
+  applyPreset("C");
+  render();
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js");
+  });
+}
+</script>
+</body>
+</html>

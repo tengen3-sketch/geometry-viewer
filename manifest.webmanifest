@@ -1,0 +1,16 @@
+{
+  "name": "ジオメトリ比較ビューア",
+  "short_name": "ジオメトリ",
+  "description": "ロードバイクのフレームジオメトリを実寸比で描画して最大3台比較",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f5f2",
+  "theme_color": "#2f6bbf",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
