@@ -301,7 +301,7 @@
       <div id="canvasWrap">
         <svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="フレームジオメトリの重ね描き比較図"></svg>
       </div>
-      <p class="canvas-note">単位はすべて mm・度。BB を原点に実寸比で描画（ホイールは 700c × 28mm 相当、半径 336mm と仮定）。サドル高は BB 中心〜サドル上面（シートチューブ延長線上）、サドル本体厚は 40mm 仮定。ハンドル芯はヘッドチューブ上端からステアリング軸に沿って「スペーサー高 + ステムスタック（未入力時 30mm）」上がった点からステム長・ステム角で算出。スペーサー高にはヘッドセット上部カバーの高さも含めて入力してください。ブラケット（レバー取付位置）はハンドル芯からハンドルリーチ分前方・同じ高さと仮定。</p>
+      <p class="canvas-note">単位はすべて mm・度。BB を原点に実寸比で描画（ホイールは 700c × 28mm 相当、半径 336mm と仮定）。サドル高は BB 中心〜サドル上面（シートチューブ延長線上）、サドル本体厚は 40mm 仮定。サドルセットバックはその位置から水平後方へのオフセット（ポストのオフセット＋レール前後位置の合算、未入力時 0）。ハンドル芯はヘッドチューブ上端からステアリング軸に沿って「スペーサー高 + ステムスタック（未入力時 30mm）」上がった点からステム長・ステム角で算出。スペーサー高にはヘッドセット上部カバーの高さも含めて入力してください。ブラケット（レバー取付位置）はハンドル芯からハンドルリーチ分前方・同じ高さと仮定。</p>
     </div>
   </div>
 </div>
@@ -324,6 +324,7 @@
     { k: "wheelbase", label: "ホイールベース",        unit: "mm", req: true,  step: 1 },
     { k: "forkRake",  label: "フォークオフセット",    unit: "mm", req: false, step: 1 },
     { k: "saddleHeight", label: "サドル高 BB〜サドル上面", unit: "mm", req: false, step: 1 },
+    { k: "setback",    label: "サドルセットバック（未入力: 0）", unit: "mm", req: false, step: 1 },
     { k: "spacer",     label: "スペーサー高（キャップ込）", unit: "mm", req: false, step: 1 },
     { k: "stemLength", label: "ステム長",              unit: "mm", req: false, step: 1 },
     { k: "stemAngle",  label: "ステム角（未入力: −6）", unit: "°",  req: false, step: 1 },
@@ -333,7 +334,7 @@
   ];
 
   // rider-specific values: kept when switching frame presets
-  var RIDER_KEYS = ["saddleHeight", "spacer", "stemLength", "stemAngle", "stemStack", "barReach", "barDrop"];
+  var RIDER_KEYS = ["saddleHeight", "setback", "spacer", "stemLength", "stemAngle", "stemStack", "barReach", "barDrop"];
 
   function makeSizes(keys, rows) {
     // rows: { fieldKey: [v per size] }
@@ -535,9 +536,14 @@
       trail = (WHEEL_R * Math.cos(ha) - v.forkRake) / Math.sin(ha);
     }
 
+    // saddle top: saddleHeight up the seat-tube line, then setback straight back
     var saddle = null;
     if (v.saddleHeight != null && isFinite(v.saddleHeight) && v.saddleHeight > 0) {
-      saddle = { x: -v.saddleHeight * Math.cos(sa), y: v.saddleHeight * Math.sin(sa) };
+      var setback = (v.setback != null && isFinite(v.setback)) ? v.setback : 0;
+      saddle = {
+        x: -v.saddleHeight * Math.cos(sa) - setback,
+        y: v.saddleHeight * Math.sin(sa)
+      };
     }
 
     // handlebar clamp: up the steering axis by spacers + stem stack, then along
@@ -821,6 +827,7 @@
       { label: "フロントセンター (mm)",   k: "frontCenter",  src: "d", dec: 0 },
       { label: "トレール (mm)",           k: "trail",        src: "d", dec: 1 },
       { label: "サドル高 (mm)",           k: "saddleHeight", src: "v", dec: 0 },
+      { label: "サドルセットバック (mm)", k: "setback",      src: "v", dec: 0 },
       { label: "サドル上面の後退量 (mm)", k: "saddleSetback", src: "d", dec: 0 },
       { label: "ハンドル芯 BBから水平 (mm)", k: "barX",      src: "d", dec: 0 },
       { label: "ハンドル芯 BBから垂直 (mm)", k: "barY",      src: "d", dec: 0 },
